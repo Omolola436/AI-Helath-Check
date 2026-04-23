@@ -62,11 +62,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderQuestions();
 
-    document.getElementById('login-form').addEventListener('submit', handleLogin);
-    document.getElementById('register-form').addEventListener('submit', handleRegister);
-    document.getElementById('health-check-form').addEventListener('submit', handleHealthCheckSubmit);
-    document.getElementById('assurance-request-form').addEventListener('submit', handleAssuranceRequest);
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) loginForm.addEventListener('submit', handleLogin);
+
+    const registerForm = document.getElementById('register-form');
+    if (registerForm) registerForm.addEventListener('submit', handleRegister);
+
+    const forgotForm = document.getElementById('forgot-form');
+    if (forgotForm) forgotForm.addEventListener('submit', handleForgotPassword);
+
+    const healthForm = document.getElementById('health-check-form');
+    if (healthForm) healthForm.addEventListener('submit', handleHealthCheckSubmit);
+
+    const assuranceForm = document.getElementById('assurance-request-form');
+    if (assuranceForm) assuranceForm.addEventListener('submit', handleAssuranceRequest);
 });
+
+function showForgot() {
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('register-form').classList.add('hidden');
+    document.getElementById('forgot-form').classList.remove('hidden');
+}
+
+async function handleForgotPassword(e) {
+    e.preventDefault();
+    const name = document.getElementById('forgot-name').value;
+    const email = document.getElementById('forgot-email').value;
+    const password = document.getElementById('forgot-password').value;
+
+    try {
+        const res = await fetch('/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert('Password reset successfully. Please log in.');
+            showLogin();
+        } else {
+            alert(data.error || 'Reset failed');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Reset error');
+    }
+}
 
 // =========================
 // TOGGLE LOGIN / REGISTER

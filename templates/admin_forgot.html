@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Forgot Password</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f5f6fa; margin: 0; }
+        .admin-box { max-width: 420px; margin: 80px auto; background: #fff; padding: 32px; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        .admin-box h1 { margin-top: 0; }
+        .admin-box label { display: block; margin: 12px 0 4px; font-weight: 600; }
+        .admin-box input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .admin-box button { width: 100%; padding: 12px; margin-top: 16px; background: #1a3a8a; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .admin-box .links { text-align: center; margin-top: 14px; }
+        .admin-box .links a { color: #1a3a8a; text-decoration: none; }
+        .flash { padding: 10px; border-radius: 6px; margin-bottom: 12px; }
+        .flash.error { background: #fde2e2; color: #a40000; }
+        .flash.success { background: #e2fde6; color: #006b1f; }
+    </style>
+</head>
+<body>
+<div class="admin-box">
+    <h1>Reset Admin Password</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, msg in messages %}
+        <div class="flash {{ category }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('admin_forgot_password') }}">
+        <label>Full Name</label>
+        <input type="text" name="name" required>
+
+        <label>Email</label>
+        <input type="email" name="email" required>
+
+        <label>New Password</label>
+        <input type="password" name="password" required>
+
+        <button type="submit">Reset Password</button>
+    </form>
+
+    <div class="links">
+        <p><a href="{{ url_for('admin_login') }}">Back to admin login</a></p>
+    </div>
+</div>
+</body>
+</html>

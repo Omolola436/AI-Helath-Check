@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
+from functools import wraps
 import sqlite3
 import datetime
 import os
@@ -61,8 +62,39 @@ def init_db():
         )
     ''')
 
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS admins (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            date_joined TEXT
+        )
+    ''')
+
+    # Seed default admin if none exists
+    c.execute('SELECT COUNT(*) FROM admins')
+    if c.fetchone()[0] == 0:
+        admin_email = os.environ.get('DEFAULT_ADMIN_EMAIL', 'admin@example.com')
+        admin_name = os.environ.get('DEFAULT_ADMIN_NAME', 'Administrator')
+        admin_password = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'admin123')
+        c.execute('''
+            INSERT INTO admins (name, email, password, date_joined)
+            VALUES (?, ?, ?, ?)
+        ''', (admin_name, admin_email, generate_password_hash(admin_password),
+              datetime.datetime.now().isoformat()))
+
     conn.commit()
     conn.close()
+
+
+def admin_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not session.get('admin_id'):
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return wrapper
 
 
 # =========================
@@ -312,6 +344,155 @@ Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         print(f"Email error: {e}")
 
     return jsonify({"success": True, "message": "Request submitted successfully"})
+
+
+# =========================
+# USER FORGOT PASSWORD
+# =========================
+@app.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.json or {}
+    name = (data.get('name') or '').strip()
+    email = (data.get('email') or '').strip()
+    new_password = data.get('password')
+
+    if not name or not email or not new_password:
+        return jsonify({"error": "All fields are required"}), 400
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('SELECT id, name FROM users WHERE email = ?', (email,))
+    row = c.fetchone()
+
+    if not row or row[1].strip().lower() != name.lower():
+        conn.close()
+        return jsonify({"error": "No matching account found"}), 404
+
+    c.execute('UPDATE users SET password = ? WHERE id = ?',
+              (generate_password_hash(new_password), row[0]))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True, "message": "Password updated"})
+
+
+# =========================
+# ADMIN ROUTES
+# =========================
+@app.route('/admin', methods=['GET'])
+def admin_login():
+    if session.get('admin_id'):
+        return redirect(url_for('admin_dashboard'))
+    return render_template('admin_login.html')
+
+
+@app.route('/admin/login', methods=['POST'])
+def admin_login_submit():
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '')
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('SELECT id, name, email, password FROM admins WHERE email = ?', (email,))
+    admin = c.fetchone()
+    conn.close()
+
+    if not admin or not check_password_hash(admin[3], password):
+        flash('Invalid admin credentials', 'error')
+        return redirect(url_for('admin_login'))
+
+    session['admin_id'] = admin[0]
+    session['admin_name'] = admin[1]
+    session['admin_email'] = admin[2]
+    return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/admin/logout', methods=['POST', 'GET'])
+def admin_logout():
+    session.pop('admin_id', None)
+    session.pop('admin_name', None)
+    session.pop('admin_email', None)
+    return redirect(url_for('admin_login'))
+
+
+@app.route('/admin/forgot-password', methods=['GET', 'POST'])
+def admin_forgot_password():
+    if request.method == 'GET':
+        return render_template('admin_forgot.html')
+
+    name = request.form.get('name', '').strip()
+    email = request.form.get('email', '').strip()
+    new_password = request.form.get('password', '')
+
+    if not name or not email or not new_password:
+        flash('All fields are required', 'error')
+        return redirect(url_for('admin_forgot_password'))
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('SELECT id, name FROM admins WHERE email = ?', (email,))
+    row = c.fetchone()
+
+    if not row or row[1].strip().lower() != name.lower():
+        conn.close()
+        flash('No matching admin account found', 'error')
+        return redirect(url_for('admin_forgot_password'))
+
+    c.execute('UPDATE admins SET password = ? WHERE id = ?',
+              (generate_password_hash(new_password), row[0]))
+    conn.commit()
+    conn.close()
+
+    flash('Password reset successfully. Please log in.', 'success')
+    return redirect(url_for('admin_login'))
+
+
+@app.route('/admin/dashboard')
+@admin_required
+def admin_dashboard():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute('''
+        SELECT u.id, u.name, u.email, u.organization, u.date_joined,
+               (SELECT COUNT(*) FROM health_check_results h WHERE h.user_id = u.id),
+               (SELECT COUNT(*) FROM upgrade_requests r WHERE r.user_id = u.id)
+        FROM users u
+        ORDER BY u.date_joined DESC
+    ''')
+    users = c.fetchall()
+
+    conn.close()
+    return render_template('admin_dashboard.html', users=users,
+                           admin_name=session.get('admin_name'))
+
+
+@app.route('/admin/user/<int:user_id>')
+@admin_required
+def admin_user_detail(user_id):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute('SELECT id, name, email, organization, date_joined FROM users WHERE id = ?',
+              (user_id,))
+    user = c.fetchone()
+
+    if not user:
+        conn.close()
+        return "User not found", 404
+
+    c.execute('''SELECT score, message, next_step, date_submitted
+                 FROM health_check_results WHERE user_id = ?
+                 ORDER BY date_submitted DESC''', (user_id,))
+    health_checks = c.fetchall()
+
+    c.execute('''SELECT service_type, date_submitted FROM upgrade_requests
+                 WHERE user_id = ? ORDER BY date_submitted DESC''', (user_id,))
+    requests_list = c.fetchall()
+
+    conn.close()
+    return render_template('admin_user_detail.html', user=user,
+                           health_checks=health_checks, requests_list=requests_list)
 
 
 # =========================
