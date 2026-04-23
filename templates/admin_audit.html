@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Audit Trail - Admin</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f5f6fa; margin: 0; }
+        .topbar { background: #1a3a8a; color: #fff; padding: 16px 28px; display: flex; justify-content: space-between; align-items: center; }
+        .topbar a { color: #fff; text-decoration: none; margin-left: 16px; }
+        .topbar a:hover { text-decoration: underline; }
+        .container { max-width: 1200px; margin: 28px auto; background: #fff; padding: 24px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        h1 { margin-top: 0; }
+        .filters { display: flex; gap: 12px; align-items: end; margin: 16px 0; flex-wrap: wrap; }
+        .filters label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+        .filters select, .filters input { padding: 8px; border: 1px solid #ccc; border-radius: 5px; }
+        .filters button { padding: 9px 16px; background: #1a3a8a; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; }
+        .filters .clear { background: #888; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+        th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+        th { background: #f1f3f8; position: sticky; top: 0; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+        .badge.user { background: #e3f0ff; color: #1a3a8a; }
+        .badge.admin { background: #fde6c0; color: #8a4d00; }
+        .action { font-family: monospace; font-size: 12px; }
+        .action.success { color: #006b1f; }
+        .action.fail { color: #a40000; }
+        .empty { color: #888; padding: 30px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div><strong>Audit Trail</strong></div>
+    <div>
+        <a href="{{ url_for('admin_dashboard') }}">Users</a>
+        <a href="{{ url_for('admin_audit') }}">Audit Trail</a>
+        <span style="margin-left:16px;">{{ admin_name }}</span>
+        <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+</div>
+
+<div class="container">
+    <h1>Audit Trail</h1>
+    <p style="color:#666;">Showing the most recent 500 actions performed in the system.</p>
+
+    <form method="GET" class="filters">
+        <div>
+            <label>Actor Type</label>
+            <select name="actor">
+                <option value="">All</option>
+                <option value="user" {% if actor_filter == 'user' %}selected{% endif %}>User</option>
+                <option value="admin" {% if actor_filter == 'admin' %}selected{% endif %}>Admin</option>
+            </select>
+        </div>
+        <div>
+            <label>Action</label>
+            <select name="action">
+                <option value="">All</option>
+                {% for a in actions %}
+                    <option value="{{ a }}" {% if action_filter == a %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit">Filter</button>
+        <a href="{{ url_for('admin_audit') }}" class="filters"><button type="button" class="clear">Clear</button></a>
+    </form>
+
+    {% if logs %}
+    <table>
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Actor</th>
+                <th>User/Admin</th>
+                <th>Email</th>
+                <th>Action</th>
+                <th>Details</th>
+                <th>IP</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for log in logs %}
+            {% set act = log[4] %}
+            <tr>
+                <td>{{ log[0][:19] if log[0] else '' }}</td>
+                <td><span class="badge {{ log[1] }}">{{ log[1] }}</span></td>
+                <td>{{ log[2] if log[2] else '-' }}</td>
+                <td>{{ log[3] if log[3] else '-' }}</td>
+                <td><span class="action {% if 'FAIL' in act %}fail{% elif 'SUCCESS' in act %}success{% endif %}">{{ act }}</span></td>
+                <td>{{ log[5] if log[5] else '' }}</td>
+                <td>{{ log[6] if log[6] else '' }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty">No audit log entries match your filters.</div>
+    {% endif %}
+</div>
+
+</body>
+</html>

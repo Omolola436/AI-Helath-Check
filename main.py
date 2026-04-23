@@ -72,6 +72,19 @@ def init_db():
         )
     ''')
 
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            actor_type TEXT NOT NULL,
+            actor_id INTEGER,
+            actor_email TEXT,
+            action TEXT NOT NULL,
+            details TEXT,
+            ip_address TEXT
+        )
+    ''')
+
     # Seed default admin if none exists
     c.execute('SELECT COUNT(*) FROM admins')
     if c.fetchone()[0] == 0:
@@ -86,6 +99,22 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+
+def log_audit(actor_type, actor_id, actor_email, action, details=None):
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO audit_logs
+                (timestamp, actor_type, actor_id, actor_email, action, details, ip_address)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (datetime.datetime.now().isoformat(), actor_type, actor_id,
+              actor_email, action, details, request.remote_addr if request else None))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Audit log error: {e}")
 
 
 def admin_required(f):
@@ -151,6 +180,8 @@ def register():
     session['user_email'] = email
     session['user_organization'] = organization
 
+    log_audit('user', user_id, email, 'REGISTER', f'Organization: {organization}')
+
     return jsonify({
         "success": True,
         "message": "Account created successfully"
@@ -179,15 +210,19 @@ def login():
     conn.close()
 
     if not user:
+        log_audit('user', None, email, 'LOGIN_FAILED', 'User not found')
         return jsonify({"error": "User not found"}), 404
 
     if not check_password_hash(user[4], password):
+        log_audit('user', user[0], user[2], 'LOGIN_FAILED', 'Invalid password')
         return jsonify({"error": "Invalid credentials"}), 401
 
     session['user_id'] = user[0]
     session['user_name'] = user[1]
     session['user_email'] = user[2]
     session['user_organization'] = user[3]
+
+    log_audit('user', user[0], user[2], 'LOGIN_SUCCESS')
 
     return jsonify({
         "success": True,
@@ -203,6 +238,8 @@ def login():
 # =========================
 @app.route('/logout', methods=['POST'])
 def logout():
+    if session.get('user_id'):
+        log_audit('user', session.get('user_id'), session.get('user_email'), 'LOGOUT')
     session.clear()
     return jsonify({"success": True})
 
@@ -248,6 +285,9 @@ def submit_health_check():
 
     conn.commit()
     conn.close()
+
+    log_audit('user', user_id, session.get('user_email'),
+              'HEALTH_CHECK_SUBMITTED', f'Score: {score}/10')
 
     return jsonify({
         "score": score,
@@ -318,6 +358,8 @@ def request_assurance():
     conn.commit()
     conn.close()
 
+    log_audit('user', user_id, email, 'SERVICE_REQUEST', f'Service: {service_type}')
+
     # EMAIL NOTIFICATION (optional)
     try:
         admin_email = os.environ.get('ADMIN_EMAIL')
@@ -373,6 +415,8 @@ def forgot_password():
     conn.commit()
     conn.close()
 
+    log_audit('user', row[0], email, 'PASSWORD_RESET')
+
     return jsonify({"success": True, "message": "Password updated"})
 
 
@@ -398,17 +442,23 @@ def admin_login_submit():
     conn.close()
 
     if not admin or not check_password_hash(admin[3], password):
+        log_audit('admin', admin[0] if admin else None, email,
+                  'LOGIN_FAILED', 'Invalid credentials')
         flash('Invalid admin credentials', 'error')
         return redirect(url_for('admin_login'))
 
     session['admin_id'] = admin[0]
     session['admin_name'] = admin[1]
     session['admin_email'] = admin[2]
+    log_audit('admin', admin[0], admin[2], 'LOGIN_SUCCESS')
     return redirect(url_for('admin_dashboard'))
 
 
 @app.route('/admin/logout', methods=['POST', 'GET'])
 def admin_logout():
+    if session.get('admin_id'):
+        log_audit('admin', session.get('admin_id'),
+                  session.get('admin_email'), 'LOGOUT')
     session.pop('admin_id', None)
     session.pop('admin_name', None)
     session.pop('admin_email', None)
@@ -443,8 +493,47 @@ def admin_forgot_password():
     conn.commit()
     conn.close()
 
+    log_audit('admin', row[0], email, 'PASSWORD_RESET')
+
     flash('Password reset successfully. Please log in.', 'success')
     return redirect(url_for('admin_login'))
+
+
+@app.route('/admin/audit')
+@admin_required
+def admin_audit():
+    action_filter = request.args.get('action', '').strip()
+    actor_filter = request.args.get('actor', '').strip()
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    query = '''SELECT timestamp, actor_type, actor_id, actor_email,
+                      action, details, ip_address
+               FROM audit_logs WHERE 1=1'''
+    params = []
+    if action_filter:
+        query += ' AND action = ?'
+        params.append(action_filter)
+    if actor_filter:
+        query += ' AND actor_type = ?'
+        params.append(actor_filter)
+    query += ' ORDER BY id DESC LIMIT 500'
+
+    c.execute(query, params)
+    logs = c.fetchall()
+
+    c.execute('SELECT DISTINCT action FROM audit_logs ORDER BY action')
+    actions = [r[0] for r in c.fetchall()]
+
+    conn.close()
+
+    log_audit('admin', session.get('admin_id'), session.get('admin_email'),
+              'VIEW_AUDIT_TRAIL')
+
+    return render_template('admin_audit.html', logs=logs, actions=actions,
+                           action_filter=action_filter, actor_filter=actor_filter,
+                           admin_name=session.get('admin_name'))
 
 
 @app.route('/admin/dashboard')
@@ -491,6 +580,10 @@ def admin_user_detail(user_id):
     requests_list = c.fetchall()
 
     conn.close()
+
+    log_audit('admin', session.get('admin_id'), session.get('admin_email'),
+              'VIEW_USER_DETAIL', f'User ID: {user_id}, Email: {user[2]}')
+
     return render_template('admin_user_detail.html', user=user,
                            health_checks=health_checks, requests_list=requests_list)
 

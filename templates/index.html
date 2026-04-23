@@ -52,6 +52,7 @@ LOGIN / REGISTER MODAL
         <div class="auth-tabs">
             <button type="button" onclick="showLogin()">Login</button>
             <button type="button" onclick="showRegister()">Register</button>
+            <button type="button" onclick="showForgot()">Forgot Password</button>
         </div>
 
         <!-- LOGIN FORM -->
@@ -71,13 +72,6 @@ LOGIN / REGISTER MODAL
             <button type="submit" class="btn-primary full-width">
                 Login
             </button>
-
-            <p style="margin-top:10px; text-align:center;">
-                <a href="#" onclick="showForgot(); return false;">Forgot password?</a>
-            </p>
-            <p style="margin-top:6px; text-align:center;">
-                <a href="/admin">Admin login</a>
-            </p>
         </form>
 
         <!-- FORGOT PASSWORD FORM -->
@@ -100,10 +94,6 @@ LOGIN / REGISTER MODAL
             </div>
 
             <button type="submit" class="btn-primary full-width">Reset Password</button>
-
-            <p style="margin-top:10px; text-align:center;">
-                <a href="#" onclick="showLogin(); return false;">Back to login</a>
-            </p>
         </form>
 
         <!-- REGISTER FORM -->
