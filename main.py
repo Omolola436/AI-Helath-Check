@@ -1,0 +1,322 @@
+from flask import Flask, render_template, request, jsonify, session
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_mail import Mail, Message
+import sqlite3
+import datetime
+import os
+
+app = Flask(__name__)
+app.secret_key = os.environ.get('SESSION_SECRET', 'dev-secret-key')
+
+# Email configuration
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', True)
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
+
+mail = Mail(app)
+
+DB_NAME = "database.db"
+
+
+# =========================
+# DATABASE INITIALIZATION
+# =========================
+def init_db():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            organization TEXT NOT NULL,
+            date_joined TEXT
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS health_check_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            score INTEGER NOT NULL,
+            message TEXT,
+            next_step TEXT,
+            date_submitted TEXT,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS upgrade_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            service_type TEXT,
+            date_submitted TEXT,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
+
+
+# =========================
+# HOME
+# =========================
+@app.route('/')
+def index():
+    return render_template('index.html',
+        emailjs_service_id=os.environ.get('VITE_EMAILJS_SERVICE_ID', 'service_ac69gqr'),
+        emailjs_template_id=os.environ.get('VITE_EMAILJS_TEMPLATE_ID', 'template_fc24l0f'),
+        emailjs_public_key=os.environ.get('VITE_EMAILJS_PUBLIC_KEY', 'ym1IhNMnZepEsUCJi')
+    )
+
+
+# =========================
+# REGISTER
+# =========================
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.json
+
+    name = data.get('name')
+    email = data.get('email')
+    plain_password = data.get('password')
+    organization = data.get('organization')
+
+    if not name or not email or not plain_password or not organization:
+        return jsonify({"error": "All fields are required"}), 400
+
+    password = generate_password_hash(plain_password)
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    # check if user exists
+    c.execute('SELECT id FROM users WHERE email = ?', (email,))
+    if c.fetchone():
+        conn.close()
+        return jsonify({"error": "User already exists"}), 409
+
+    c.execute('''
+        INSERT INTO users (name, email, password, organization, date_joined)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (name, email, password, organization, datetime.datetime.now().isoformat()))
+
+    user_id = c.lastrowid
+
+    conn.commit()
+    conn.close()
+
+    # OPTIONAL: auto-login after register
+    session['user_id'] = user_id
+    session['user_name'] = name
+    session['user_email'] = email
+    session['user_organization'] = organization
+
+    return jsonify({
+        "success": True,
+        "message": "Account created successfully"
+    })
+
+
+# =========================
+# LOGIN
+# =========================
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return jsonify({"error": "Email and password required"}), 400
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute('SELECT id, name, email, organization, password FROM users WHERE email = ?', (email,))
+    user = c.fetchone()
+
+    conn.close()
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    if not check_password_hash(user[4], password):
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    session['user_id'] = user[0]
+    session['user_name'] = user[1]
+    session['user_email'] = user[2]
+    session['user_organization'] = user[3]
+
+    return jsonify({
+        "success": True,
+        "user_id": user[0],
+        "user_name": user[1],
+        "user_email": user[2],
+        "user_organization": user[3]
+    })
+
+
+# =========================
+# LOGOUT
+# =========================
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({"success": True})
+
+
+# =========================
+# HEALTH CHECK
+# =========================
+@app.route('/submit-health-check', methods=['POST'])
+def submit_health_check():
+    data = request.json
+
+    if not data or 'answers' not in data:
+        return jsonify({"error": "No answers provided"}), 400
+
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+
+    answers = data.get('answers', [])
+
+    score = sum(1 for a in answers if a == 'Yes')
+
+    if score >= 8:
+        message = "Strong foundations in place.\n\nYour organization has established key governance structures for managing AI risks and ensuring responsible use of artificial intelligence."
+        next_step = "Enterprise AI Portfolio Review\nAI Audit & Assurance"
+    elif score >= 5:
+        message = "Progressing but governance gaps exist.\n\nYour organization has taken steps toward responsible AI use, but several governance, oversight, and risk management areas require improvement."
+        next_step = "Responsible AI Framework Implementation\nRegulatory Readiness Assessment"
+    elif score >= 3:
+        message = "Early stage with key risks.\n\nYour organization is beginning to adopt AI technologies but lacks structured governance, risk management, and oversight processes."
+        next_step = "AI Governance Foundations Program\nAI Training and Capacity Building"
+    else:
+        message = "Urgent attention required.\n\nYour organization may be exposed to significant operational, ethical, and regulatory risks related to AI use."
+        next_step = "Comprehensive AI Assurance\nAI Incident Response Planning"
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute('''
+        INSERT INTO health_check_results (user_id, score, message, next_step, date_submitted)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (user_id, score, message, next_step, datetime.datetime.now().isoformat()))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "score": score,
+        "message": message,
+        "next_step": next_step
+    })
+
+
+# =========================
+# LATEST RESULTS
+# =========================
+@app.route('/get-latest-results', methods=['GET'])
+def get_latest_results():
+    user_id = session.get('user_id')
+
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute('''
+        SELECT score, message, next_step, date_submitted
+        FROM health_check_results
+        WHERE user_id = ?
+        ORDER BY date_submitted DESC
+        LIMIT 1
+    ''', (user_id,))
+
+    result = c.fetchone()
+    conn.close()
+
+    if result:
+        return jsonify({
+            "score": result[0],
+            "message": result[1],
+            "next_step": result[2],
+            "date_submitted": result[3]
+        })
+
+    return jsonify({"error": "No results found"}), 404
+
+
+# =========================
+# REQUEST ASSURANCE
+# =========================
+@app.route('/request-assurance', methods=['POST'])
+def request_assurance():
+    data = request.json
+
+    user_id = session.get('user_id')
+    service_type = data.get('service_type')
+    email = data.get('email')
+    organization = data.get('organization')
+    user_name = session.get('user_name')
+
+    if not user_id or not service_type or not email or not organization:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute('''
+        INSERT INTO upgrade_requests (user_id, service_type, date_submitted)
+        VALUES (?, ?, ?)
+    ''', (user_id, service_type, datetime.datetime.now().isoformat()))
+
+    conn.commit()
+    conn.close()
+
+    # EMAIL NOTIFICATION (optional)
+    try:
+        admin_email = os.environ.get('ADMIN_EMAIL')
+
+        if admin_email:
+            subject = f"New AI Assurance Service Request: {service_type}"
+            body = f"""
+New Service Request Received
+
+Service: {service_type}
+
+User Information:
+- Name: {user_name}
+- Email: {email}
+- Organization: {organization}
+
+Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+"""
+
+            msg = Message(subject=subject, recipients=[admin_email], body=body)
+            mail.send(msg)
+
+    except Exception as e:
+        print(f"Email error: {e}")
+
+    return jsonify({"success": True, "message": "Request submitted successfully"})
+
+
+# =========================
+# RUN APP
+# =========================
+if __name__ == '__main__':
+    init_db()
+    app.run(host='0.0.0.0', port=5000, debug=True)
