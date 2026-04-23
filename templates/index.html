@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-
     <script>
         window.EMAILJS_SERVICE_ID = "{{ emailjs_service_id }}";
         window.EMAILJS_TEMPLATE_ID = "{{ emailjs_template_id }}";
@@ -18,14 +17,11 @@
     </script>
 
     <style>
-        .hidden { display: none; }
-
         .auth-tabs {
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
+            gap: 6px;
+            margin-bottom: 18px;
         }
-
         .auth-tabs button {
             flex: 1;
             padding: 10px;
@@ -33,104 +29,89 @@
             cursor: pointer;
             background: #eee;
             font-weight: 600;
+            border-radius: 5px;
+            font-family: inherit;
         }
-
+        .auth-tabs button.active,
         .auth-tabs button:hover {
-            background: #ddd;
+            background: #1a3a8a;
+            color: #fff;
         }
     </style>
 </head>
-
 <body>
 
-<!-- =========================
-LOGIN / REGISTER MODAL
-========================= -->
+<!-- ==================== LOGIN / REGISTER / FORGOT MODAL ==================== -->
 <div id="login-modal" class="modal">
     <div class="modal-content">
 
         <div class="auth-tabs">
-            <button type="button" onclick="showLogin()">Login</button>
-            <button type="button" onclick="showRegister()">Register</button>
-            <button type="button" onclick="showForgot()">Forgot Password</button>
+            <button type="button" id="tab-login" onclick="showLogin()">Login</button>
+            <button type="button" id="tab-register" onclick="showRegister()">Register</button>
+            <button type="button" id="tab-forgot" onclick="showForgot()">Forgot Password</button>
         </div>
 
-        <!-- LOGIN FORM -->
+        <!-- LOGIN -->
         <form id="login-form">
             <h2>Sign In</h2>
-
+            <p>Enter your details to access the platform</p>
             <div class="form-group">
-                <label>Email Address *</label>
+                <label for="login-email">Email Address *</label>
                 <input type="email" id="login-email" required>
             </div>
-
             <div class="form-group">
-                <label>Password *</label>
+                <label for="login-password">Password *</label>
                 <input type="password" id="login-password" required>
             </div>
-
-            <button type="submit" class="btn-primary full-width">
-                Login
-            </button>
+            <button type="submit" class="btn-primary full-width">Sign In</button>
         </form>
 
-        <!-- FORGOT PASSWORD FORM -->
-        <form id="forgot-form" class="hidden">
-            <h2>Reset Password</h2>
-
-            <div class="form-group">
-                <label>Full Name *</label>
-                <input type="text" id="forgot-name" required>
-            </div>
-
-            <div class="form-group">
-                <label>Email Address *</label>
-                <input type="email" id="forgot-email" required>
-            </div>
-
-            <div class="form-group">
-                <label>New Password *</label>
-                <input type="password" id="forgot-password" required>
-            </div>
-
-            <button type="submit" class="btn-primary full-width">Reset Password</button>
-        </form>
-
-        <!-- REGISTER FORM -->
+        <!-- REGISTER -->
         <form id="register-form" class="hidden">
             <h2>Create Account</h2>
-
+            <p>Sign up to access the AI Health Check platform</p>
             <div class="form-group">
-                <label>Full Name *</label>
+                <label for="register-name">Full Name *</label>
                 <input type="text" id="register-name" required>
             </div>
-
             <div class="form-group">
-                <label>Email Address *</label>
+                <label for="register-email">Email Address *</label>
                 <input type="email" id="register-email" required>
             </div>
-
             <div class="form-group">
-                <label>Organization *</label>
+                <label for="register-organization">Organization Name *</label>
                 <input type="text" id="register-organization" required>
             </div>
-
             <div class="form-group">
-                <label>Password *</label>
+                <label for="register-password">Password *</label>
                 <input type="password" id="register-password" required>
             </div>
+            <button type="submit" class="btn-primary full-width">Create Account</button>
+        </form>
 
-            <button type="submit" class="btn-primary full-width">
-                Create Account
-            </button>
+        <!-- FORGOT PASSWORD -->
+        <form id="forgot-form" class="hidden">
+            <h2>Reset Password</h2>
+            <p>Enter your full name, email and a new password</p>
+            <div class="form-group">
+                <label for="forgot-name">Full Name *</label>
+                <input type="text" id="forgot-name" required>
+            </div>
+            <div class="form-group">
+                <label for="forgot-email">Email Address *</label>
+                <input type="email" id="forgot-email" required>
+            </div>
+            <div class="form-group">
+                <label for="forgot-password">New Password *</label>
+                <input type="password" id="forgot-password" required>
+            </div>
+            <button type="submit" class="btn-primary full-width">Reset Password</button>
         </form>
 
     </div>
 </div>
 
-<!-- =========================
-SIDEBAR
-========================= -->
+<!-- ==================== SIDEBAR ==================== -->
 <nav class="sidebar hidden" id="sidebar">
     <div class="sidebar-header">
         <h2>AI Health Check</h2>
@@ -138,55 +119,202 @@ SIDEBAR
     </div>
 
     <ul class="nav-links">
-        <li><a href="#" onclick="showPage('dashboard')">Dashboard</a></li>
-        <li><a href="#" onclick="showPage('health-check')">AI Health Check</a></li>
-        <li><a href="#" onclick="showAssuranceTiers()">AI Assurance</a></li>
-        <li><a href="#" onclick="showPage('governance')">Governance Framework</a></li>
-        <li><a href="#" onclick="showPage('reports')">Reports</a></li>
+        <li><a href="#" class="nav-link" onclick="showPage('dashboard'); return false;">Dashboard</a></li>
+        <li><a href="#" class="nav-link active" onclick="showPage('health-check'); return false;">AI Health Check</a></li>
+        <li><a href="#" class="nav-link" onclick="showAssuranceTiers(); return false;">AI Assurance</a></li>
+        <li><a href="#" class="nav-link" onclick="showPage('governance'); return false;">Governance Framework</a></li>
+        <li><a href="#" class="nav-link" onclick="showPage('reports'); return false;">Reports</a></li>
     </ul>
 
     <div class="sidebar-footer">
-        <button onclick="logout()">Sign Out</button>
+        <button class="btn-logout" onclick="logout()">Sign Out</button>
     </div>
 </nav>
 
-<!-- =========================
-MAIN CONTENT
-========================= -->
+<!-- ==================== MAIN CONTENT ==================== -->
 <main class="main-content hidden" id="main-content">
 
+    <!-- Dashboard -->
     <div id="dashboard-page" class="page-section hidden">
-        <h1>Dashboard</h1>
+        <div class="header">
+            <div class="header-info">
+                <h1>Dashboard</h1>
+                <p>Overview of your AI governance initiatives</p>
+            </div>
+        </div>
+        <div class="content-container">
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <h3>Quick Assessment</h3>
+                    <p>Take a quick health check to evaluate your AI governance maturity and identify risks.</p>
+                    <button class="btn-primary" onclick="showPage('health-check'); return false;">Start Health Check</button>
+                </div>
+                <div class="dashboard-card locked">
+                    <h3>Risk Assessment</h3>
+                    <p>Detailed risk analysis across your AI portfolio.</p>
+                    <button class="btn-primary" onclick="showUpgradeModal()">Unlock Feature</button>
+                </div>
+                <div class="dashboard-card locked">
+                    <h3>Compliance Status</h3>
+                    <p>Track your compliance with AI regulations.</p>
+                    <button class="btn-primary" onclick="showUpgradeModal()">Unlock Feature</button>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Health Check -->
     <div id="health-check-page" class="page-section">
-        <h1>AI Health Check</h1>
+        <div class="header">
+            <div class="header-info">
+                <h1>AI Governance Health Check</h1>
+                <p>Answer the following questions to evaluate your organization's AI governance maturity.</p>
+            </div>
+        </div>
+        <div id="health-check-container" class="content-container">
+            <form id="health-check-form">
+                <div id="questions-container"></div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary" id="submit-btn">Submit Assessment</button>
+                </div>
+            </form>
+        </div>
 
-        <form id="health-check-form">
-            <div id="questions-container"></div>
-            <button type="submit">Submit Assessment</button>
-        </form>
+        <div id="results-container" class="content-container hidden">
+            <div class="results-card">
+                <h2>Your AI Governance Score</h2>
+                <div class="score-display">
+                    <span class="score-label">Score:</span>
+                    <span id="score-value" class="score-value">0 / 10</span>
+                </div>
+                <div class="result-message">
+                    <p id="result-text"></p>
+                </div>
+                <div class="next-steps">
+                    <h3>Recommended Next Steps</h3>
+                    <ul id="next-steps-list"></ul>
+                </div>
+                <div class="upgrade-section">
+                    <p class="upgrade-text">Ready to get detailed governance analysis?</p>
+                    <button class="btn-primary" onclick="showAssuranceTiers()">Explore AI Assurance Services</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        <div id="results-container" class="hidden">
-            <h2>Your Score</h2>
-            <p id="result-text"></p>
+    <!-- Governance -->
+    <div id="governance-page" class="page-section hidden">
+        <div class="header">
+            <div class="header-info">
+                <h1>Governance Framework</h1>
+                <p>Resources and templates for responsible AI governance</p>
+            </div>
+        </div>
+        <div class="content-container">
+            <div class="framework-grid">
+                <div class="framework-card">
+                    <h3>AI Governance Maturity Model</h3>
+                    <p>Understand the stages of AI governance maturity and where your organization stands in its AI governance journey.</p>
+                    <button class="btn-primary" onclick="alert('Resource coming soon')">Learn More</button>
+                </div>
+                <div class="framework-card">
+                    <h3>Risk Management Framework</h3>
+                    <p>Identify, assess, and mitigate risks associated with your AI systems using a structured approach.</p>
+                    <button class="btn-primary" onclick="alert('Resource coming soon')">Learn More</button>
+                </div>
+                <div class="framework-card">
+                    <h3>Compliance Checklist</h3>
+                    <p>Ensure your AI systems comply with emerging regulations including the EU AI Act and ISO standards.</p>
+                    <button class="btn-primary" onclick="alert('Resource coming soon')">Learn More</button>
+                </div>
+                <div class="framework-card">
+                    <h3>Ethics Guidelines</h3>
+                    <p>Implement ethical principles in your AI development and deployment processes.</p>
+                    <button class="btn-primary" onclick="alert('Resource coming soon')">Learn More</button>
+                </div>
+                <div class="framework-card">
+                    <h3>Documentation Templates</h3>
+                    <p>Use ready-made templates for AI system documentation and governance records.</p>
+                    <button class="btn-primary" onclick="alert('Resource coming soon')">Learn More</button>
+                </div>
+                <div class="framework-card">
+                    <h3>Training Programs</h3>
+                    <p>Educate your teams on responsible AI practices and governance principles.</p>
+                    <button class="btn-primary" onclick="alert('Resource coming soon')">Learn More</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports -->
+    <div id="reports-page" class="page-section hidden">
+        <div class="header">
+            <div class="header-info">
+                <h1>Reports</h1>
+                <p>View your AI governance assessment reports</p>
+            </div>
+        </div>
+        <div id="reports-container" class="content-container">
+            <div id="no-reports" class="reports-placeholder">
+                <p>No reports available yet.</p>
+                <p>Complete the <strong>AI Health Check</strong> to generate your first assessment report.</p>
+                <button class="btn-primary" onclick="showPage('health-check'); return false;">Take Health Check</button>
+            </div>
+            <div id="reports-list" class="hidden"></div>
         </div>
     </div>
 
 </main>
 
-<!-- =========================
-SCRIPT
-========================= -->
-<script>
-function showPage(name) {
-    document.querySelectorAll('.page-section').forEach(s => s.classList.add('hidden'));
-    const el = document.getElementById(name + '-page');
-    if (el) el.classList.remove('hidden');
-}
-function showAssuranceTiers() { showPage('dashboard'); }
-</script>
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<!-- ==================== MODALS ==================== -->
+<div id="assurance-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+        <span class="close-btn" onclick="hideAssuranceTiers()">&times;</span>
+        <h2>AI Assurance Services</h2>
+        <p>Choose the service that best fits your organization's needs</p>
+        <div id="tiers-container" class="tiers-grid"></div>
+    </div>
+</div>
 
+<div id="assurance-request-modal" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-btn" onclick="hideAssuranceRequest()">&times;</span>
+        <h2 id="assurance-service-title"></h2>
+        <p id="assurance-service-description"></p>
+        <form id="assurance-request-form">
+            <div class="form-group">
+                <label>Service Selected:</label>
+                <p id="selected-service" style="font-weight: 600; color: var(--accent-color);"></p>
+            </div>
+            <div class="form-group">
+                <label for="assurance-email">Email Address *</label>
+                <input type="email" id="assurance-email" required>
+            </div>
+            <div class="form-group">
+                <label for="assurance-org">Organization Name *</label>
+                <input type="text" id="assurance-org" required>
+            </div>
+            <button type="submit" class="btn-primary full-width">Request This Service</button>
+        </form>
+        <div id="assurance-success" class="success-message hidden">
+            Thank you for your interest! Our team will contact you shortly to discuss your AI assurance needs.
+        </div>
+    </div>
+</div>
+
+<div id="upgrade-modal" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-btn" onclick="hideUpgradeModal()">&times;</span>
+        <h2>Coming Soon</h2>
+        <p>This feature will be available soon. Please check back later.</p>
+        <button class="btn-primary full-width" onclick="hideUpgradeModal()">Close</button>
+    </div>
+</div>
+
+<footer class="footer">
+    <p>&copy; 2026 AI Health Check Governance Platform. All rights reserved.</p>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
