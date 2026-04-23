@@ -1,71 +1,81 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Admin Dashboard</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #f5f6fa; margin: 0; }
-        .topbar { background: #1a3a8a; color: #fff; padding: 16px 28px; display: flex; justify-content: space-between; align-items: center; }
-        .topbar a { color: #fff; text-decoration: none; margin-left: 16px; }
-        .topbar a:hover { text-decoration: underline; }
-        .container { max-width: 1100px; margin: 28px auto; background: #fff; padding: 24px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        h1 { margin-top: 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 14px; }
-        th { background: #f1f3f8; }
-        tr:hover { background: #fafbff; }
-        .btn { display: inline-block; background: #1a3a8a; color: #fff; padding: 6px 12px; border-radius: 5px; text-decoration: none; font-size: 13px; }
-        .empty { color: #888; padding: 20px; text-align: center; }
-    </style>
-</head>
-<body>
+{% extends "admin_base.html" %}
+{% set active = 'dashboard' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
 
-<div class="topbar">
-    <div><strong>Admin Dashboard</strong></div>
+<div class="page-head">
     <div>
-        <a href="{{ url_for('admin_dashboard') }}">Users</a>
-        <a href="{{ url_for('admin_audit') }}">Audit Trail</a>
-        <span style="margin-left:16px;">{{ admin_name }}</span>
-        <a href="{{ url_for('admin_logout') }}">Logout</a>
+        <h1>Dashboard</h1>
+        <p>Overview of registered users and platform activity</p>
     </div>
 </div>
 
-<div class="container">
-    <h1>Registered Users ({{ users|length }})</h1>
+<div class="stats">
+    <div class="stat users">
+        <div class="label">Total Users</div>
+        <div class="value">{{ stats.users }}</div>
+    </div>
+    <div class="stat checks">
+        <div class="label">Health Checks</div>
+        <div class="value">{{ stats.checks }}</div>
+    </div>
+    <div class="stat requests">
+        <div class="label">Service Requests</div>
+        <div class="value">{{ stats.requests }}</div>
+    </div>
+    <div class="stat audit">
+        <div class="label">Audit Events</div>
+        <div class="value">{{ stats.audit }}</div>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h2>Registered Users</h2>
+        <a href="{{ url_for('admin_audit') }}" class="btn secondary sm">View Audit Trail →</a>
+    </div>
 
     {% if users %}
-    <table>
+    <div class="table-wrap">
+    <table class="tbl">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
+                <th>User</th>
                 <th>Organization</th>
                 <th>Joined</th>
                 <th>Health Checks</th>
-                <th>Service Requests</th>
-                <th>Actions</th>
+                <th>Requests</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
         {% for u in users %}
             <tr>
-                <td>{{ u[0] }}</td>
-                <td>{{ u[1] }}</td>
-                <td>{{ u[2] }}</td>
+                <td>
+                    <div class="user-cell">
+                        <span class="avatar">{{ u[1][:1]|upper if u[1] else '?' }}</span>
+                        <div>
+                            <div class="name">{{ u[1] }}</div>
+                            <div class="sub">{{ u[2] }}</div>
+                        </div>
+                    </div>
+                </td>
                 <td>{{ u[3] }}</td>
-                <td>{{ u[4][:10] if u[4] else '' }}</td>
-                <td>{{ u[5] }}</td>
-                <td>{{ u[6] }}</td>
-                <td><a class="btn" href="{{ url_for('admin_user_detail', user_id=u[0]) }}">View</a></td>
+                <td>{{ u[4][:10] if u[4] else '-' }}</td>
+                <td><span class="pill">{{ u[5] }}</span></td>
+                <td><span class="pill">{{ u[6] }}</span></td>
+                <td><a class="btn sm" href="{{ url_for('admin_user_detail', user_id=u[0]) }}">View</a></td>
             </tr>
         {% endfor %}
         </tbody>
     </table>
+    </div>
     {% else %}
-        <div class="empty">No users registered yet.</div>
+        <div class="empty">
+            <div class="ico">👥</div>
+            <p>No users have registered yet.</p>
+        </div>
     {% endif %}
 </div>
 
-</body>
-</html>
+{% endblock %}

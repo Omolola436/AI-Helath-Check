@@ -551,8 +551,24 @@ def admin_dashboard():
     ''')
     users = c.fetchall()
 
+    c.execute('SELECT COUNT(*) FROM users')
+    total_users = c.fetchone()[0]
+    c.execute('SELECT COUNT(*) FROM health_check_results')
+    total_checks = c.fetchone()[0]
+    c.execute('SELECT COUNT(*) FROM upgrade_requests')
+    total_requests = c.fetchone()[0]
+    c.execute('SELECT COUNT(*) FROM audit_logs')
+    total_audit = c.fetchone()[0]
+
+    stats = {
+        'users': total_users,
+        'checks': total_checks,
+        'requests': total_requests,
+        'audit': total_audit,
+    }
+
     conn.close()
-    return render_template('admin_dashboard.html', users=users,
+    return render_template('admin_dashboard.html', users=users, stats=stats,
                            admin_name=session.get('admin_name'))
 
 
