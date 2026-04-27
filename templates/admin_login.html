@@ -17,7 +17,10 @@
             <input type="email" name="email" required autocomplete="username">
 
             <label>Password</label>
-            <input type="password" name="password" required autocomplete="current-password">
+            <div class="pw-wrap">
+                <input type="password" id="admin-password" name="password" required autocomplete="current-password">
+                <button type="button" class="pw-toggle" data-target="admin-password" aria-label="Show password">👁</button>
+            </div>
 
             <button type="submit">Sign In</button>
         </form>

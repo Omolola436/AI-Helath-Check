@@ -41,6 +41,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const assuranceRequestForm = document.getElementById('assurance-request-form');
     if (assuranceRequestForm) assuranceRequestForm.addEventListener('submit', handleAssuranceRequest);
 
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.pw-toggle');
+        if (!btn) return;
+        const input = document.getElementById(btn.dataset.target);
+        if (!input) return;
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = '🙈';
+            btn.classList.add('active');
+            btn.setAttribute('aria-label', 'Hide password');
+        } else {
+            input.type = 'password';
+            btn.textContent = '👁';
+            btn.classList.remove('active');
+            btn.setAttribute('aria-label', 'Show password');
+        }
+    });
+
     showLogin();
 });
 

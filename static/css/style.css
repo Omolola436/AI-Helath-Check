@@ -701,3 +701,23 @@ main {
         max-width: 90%;
     }
 }
+
+/* Password show/hide toggle */
+.pw-wrap { position: relative; }
+.pw-wrap input { width: 100%; padding-right: 44px; }
+.pw-toggle {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 6px 10px;
+    line-height: 1;
+    color: #6b7280;
+    border-radius: 6px;
+}
+.pw-toggle:hover { background: rgba(0,0,0,0.05); color: #1d2330; }
+.pw-toggle.active { color: #1e2a78; }

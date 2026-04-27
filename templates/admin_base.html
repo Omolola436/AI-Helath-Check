@@ -262,6 +262,24 @@
         font-family: inherit;
     }
     .auth-card input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30,42,120,0.1); }
+    .pw-wrap { position: relative; }
+    .pw-wrap input { width: 100%; padding-right: 44px; }
+    .pw-toggle {
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 6px 10px;
+        line-height: 1;
+        color: var(--muted);
+        border-radius: 6px;
+    }
+    .pw-toggle:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+    .pw-toggle.active { color: var(--primary); }
     .auth-card button[type="submit"] {
         width: 100%; padding: 12px; margin-top: 22px; background: var(--primary);
         color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer;
@@ -326,5 +344,24 @@
 {% block auth %}{% endblock %}
 {% endif %}
 
+<script>
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.pw-toggle');
+    if (!btn) return;
+    const input = document.getElementById(btn.dataset.target);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+        btn.classList.add('active');
+        btn.setAttribute('aria-label', 'Hide password');
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+        btn.classList.remove('active');
+        btn.setAttribute('aria-label', 'Show password');
+    }
+});
+</script>
 </body>
 </html>
