@@ -104,8 +104,33 @@ function showApp() {
     document.getElementById('login-modal').classList.add('hidden');
     document.getElementById('sidebar').classList.remove('hidden');
     document.getElementById('main-content').classList.remove('hidden');
+    resetHealthCheck();
+    resetReports();
     showPage('health-check');
     loadReports();
+}
+
+function resetHealthCheck() {
+    document.getElementById('results-container').classList.add('hidden');
+    document.getElementById('health-check-container').classList.remove('hidden');
+    const form = document.getElementById('health-check-form');
+    if (form) form.reset();
+    document.querySelectorAll('#health-check-form input[type="radio"]').forEach(r => { r.checked = false; });
+    const submitBtn = document.getElementById('submit-btn');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Assessment';
+    }
+}
+
+function resetReports() {
+    const noReports = document.getElementById('no-reports');
+    const reportsList = document.getElementById('reports-list');
+    if (noReports) noReports.classList.remove('hidden');
+    if (reportsList) {
+        reportsList.classList.add('hidden');
+        reportsList.innerHTML = '';
+    }
 }
 
 // =========================
