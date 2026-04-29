@@ -442,7 +442,7 @@ async function showRecommendedServices() {
         document.getElementById('assurance-modal-title').textContent = 'Recommended for You';
         document.getElementById('assurance-modal-subtitle').textContent =
             `Based on your score of ${latestScore}/10, we recommend the following service${recommended.length > 1 ? 's' : ''}.`;
-        renderAssuranceTiers(recommended);
+        renderAssuranceTiers(recommended, { showExploreOthers: true });
     }
 
     document.getElementById('assurance-modal').classList.remove('hidden');
@@ -452,7 +452,8 @@ function hideAssuranceTiers() {
     document.getElementById('assurance-modal').classList.add('hidden');
 }
 
-function renderAssuranceTiers(tiers) {
+function renderAssuranceTiers(tiers, options) {
+    options = options || {};
     const container = document.getElementById('tiers-container');
     container.innerHTML = '';
     (tiers || assuranceTiers).forEach(tier => {
@@ -464,6 +465,15 @@ function renderAssuranceTiers(tiers) {
             <button class="btn-primary" onclick="selectAssuranceTier('${tier.id}', '${tier.name.replace(/'/g, "\\'")}')">Select Service</button>`;
         container.appendChild(card);
     });
+
+    if (options.showExploreOthers) {
+        const exploreWrap = document.createElement('div');
+        exploreWrap.className = 'explore-others';
+        exploreWrap.innerHTML = `
+            <p class="explore-others-text">Looking for something else?</p>
+            <button type="button" class="btn-secondary" onclick="showAllServices()">Explore Other Services</button>`;
+        container.appendChild(exploreWrap);
+    }
 }
 
 function selectAssuranceTier(tierId, tierName) {

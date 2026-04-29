@@ -584,6 +584,41 @@ body::before {
     margin-top: auto;
 }
 
+.explore-others {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+}
+
+.explore-others-text {
+    color: #64748B;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.btn-secondary {
+    background-color: #FFFFFF;
+    color: var(--accent-color, #1a3a8a);
+    border: 1px solid var(--accent-color, #1a3a8a);
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-secondary:hover {
+    background-color: var(--accent-color, #1a3a8a);
+    color: #FFFFFF;
+}
+
 /* Governance Framework */
 .framework-grid {
     display: grid;
