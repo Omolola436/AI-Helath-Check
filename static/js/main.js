@@ -21,6 +21,15 @@ const assuranceTiers = [
 ];
 
 let currentUser = null;
+let latestScore = null;
+
+function getRecommendedTierIds(score) {
+    if (score === null || score === undefined) return null;
+    if (score >= 8) return ['enterprise', 'comprehensive'];
+    if (score >= 5) return ['framework', 'regulatory'];
+    if (score >= 3) return ['training', 'framework'];
+    return ['comprehensive', 'framework'];
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     checkLoginStatus();
@@ -247,6 +256,7 @@ async function logout() {
     }
     sessionStorage.removeItem('user');
     currentUser = null;
+    latestScore = null;
     showLoginModal();
     document.getElementById('login-form').reset();
 }
@@ -332,6 +342,7 @@ async function handleHealthCheckSubmit(e) {
 }
 
 function displayResults(data) {
+    latestScore = data.score;
     document.getElementById('health-check-container').classList.add('hidden');
     document.getElementById('results-container').classList.remove('hidden');
     document.getElementById('score-value').textContent = `${data.score} / 10`;
@@ -365,6 +376,7 @@ function displayReports(data) {
     const noReports = document.getElementById('no-reports');
     const reportsList = document.getElementById('reports-list');
     if (data && data.score !== undefined) {
+        latestScore = data.score;
         noReports.classList.add('hidden');
         reportsList.classList.remove('hidden');
         reportsList.innerHTML = `
@@ -394,7 +406,45 @@ function displayReports(data) {
 // ASSURANCE
 // =========================
 function showAssuranceTiers() {
-    renderAssuranceTiers();
+    showAllServices();
+}
+
+function showAllServices() {
+    document.getElementById('assurance-modal-title').textContent = 'AI Services';
+    document.getElementById('assurance-modal-subtitle').textContent =
+        "Browse all our services and request the one that fits your organization's needs.";
+    renderAssuranceTiers(assuranceTiers);
+    document.getElementById('assurance-modal').classList.remove('hidden');
+}
+
+async function showRecommendedServices() {
+    if (latestScore === null || latestScore === undefined) {
+        try {
+            const response = await fetch('/get-latest-results');
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.score !== undefined) latestScore = data.score;
+            }
+        } catch (err) {
+            console.error('Error fetching latest score:', err);
+        }
+    }
+
+    const recommendedIds = getRecommendedTierIds(latestScore);
+
+    if (!recommendedIds) {
+        document.getElementById('assurance-modal-title').textContent = 'Take the Health Check First';
+        document.getElementById('assurance-modal-subtitle').textContent =
+            'Complete the AI Health Check so we can recommend the service best suited to your organization. Meanwhile, here are all our services:';
+        renderAssuranceTiers(assuranceTiers);
+    } else {
+        const recommended = assuranceTiers.filter(t => recommendedIds.includes(t.id));
+        document.getElementById('assurance-modal-title').textContent = 'Recommended for You';
+        document.getElementById('assurance-modal-subtitle').textContent =
+            `Based on your score of ${latestScore}/10, we recommend the following service${recommended.length > 1 ? 's' : ''}.`;
+        renderAssuranceTiers(recommended);
+    }
+
     document.getElementById('assurance-modal').classList.remove('hidden');
 }
 
@@ -402,10 +452,10 @@ function hideAssuranceTiers() {
     document.getElementById('assurance-modal').classList.add('hidden');
 }
 
-function renderAssuranceTiers() {
+function renderAssuranceTiers(tiers) {
     const container = document.getElementById('tiers-container');
     container.innerHTML = '';
-    assuranceTiers.forEach(tier => {
+    (tiers || assuranceTiers).forEach(tier => {
         const card = document.createElement('div');
         card.className = 'tier-card';
         card.innerHTML = `
@@ -439,9 +489,16 @@ function hideAssuranceRequest() {
 async function handleAssuranceRequest(e) {
     e.preventDefault();
     const form = document.getElementById('assurance-request-form');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalLabel = submitBtn ? submitBtn.textContent : '';
     const serviceType = form.dataset.serviceName;
     const email = document.getElementById('assurance-email').value;
     const organization = document.getElementById('assurance-org').value;
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+    }
 
     try {
         const response = await fetch('/request-assurance', {
@@ -452,25 +509,31 @@ async function handleAssuranceRequest(e) {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Request failed');
 
-        try {
-            await emailjs.send(window.EMAILJS_SERVICE_ID, window.EMAILJS_TEMPLATE_ID, {
+        // Show the success message immediately — don't make the user wait
+        // for the third-party email send.
+        document.getElementById('assurance-request-form').classList.add('hidden');
+        document.getElementById('assurance-success').classList.remove('hidden');
+        setTimeout(hideAssuranceRequest, 3000);
+
+        // Fire EmailJS in the background; failures are logged silently.
+        if (window.emailjs && window.EMAILJS_SERVICE_ID && window.EMAILJS_TEMPLATE_ID) {
+            emailjs.send(window.EMAILJS_SERVICE_ID, window.EMAILJS_TEMPLATE_ID, {
                 from_name: currentUser ? currentUser.name : 'Unknown',
                 from_email: email,
                 organization,
                 service_type: serviceType,
                 reply_to: email,
                 message: `New AI Assurance service request received.\n\nService: ${serviceType}\nName: ${currentUser ? currentUser.name : 'Unknown'}\nEmail: ${email}\nOrganization: ${organization}\nDate: ${new Date().toLocaleString()}`
-            });
-        } catch (emailErr) {
-            console.warn('Email notification failed:', emailErr);
+            }).catch(emailErr => console.warn('Email notification failed:', emailErr));
         }
-
-        document.getElementById('assurance-request-form').classList.add('hidden');
-        document.getElementById('assurance-success').classList.remove('hidden');
-        setTimeout(hideAssuranceRequest, 3000);
     } catch (err) {
         console.error(err);
         alert(err.message || 'An error occurred while submitting your request.');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalLabel || 'Request This Service';
+        }
     }
 }
 

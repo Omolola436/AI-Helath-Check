@@ -130,7 +130,8 @@
     <ul class="nav-links">
         <li><a href="#" class="nav-link" onclick="showPage('dashboard'); return false;">Dashboard</a></li>
         <li><a href="#" class="nav-link active" onclick="showPage('health-check'); return false;">AI Health Check</a></li>
-        <li><a href="#" class="nav-link" onclick="showAssuranceTiers(); return false;">AI Assurance</a></li>
+        <li><a href="#" class="nav-link" onclick="showRecommendedServices(); return false;">AI Assurance</a></li>
+        <li><a href="#" class="nav-link" onclick="showAllServices(); return false;">AI Services</a></li>
         <li><a href="#" class="nav-link" onclick="showPage('governance'); return false;">Governance Framework</a></li>
         <li><a href="#" class="nav-link" onclick="showPage('reports'); return false;">Reports</a></li>
     </ul>
@@ -205,7 +206,7 @@
                 </div>
                 <div class="upgrade-section">
                     <p class="upgrade-text">Ready to get detailed governance analysis?</p>
-                    <button class="btn-primary" onclick="showAssuranceTiers()">Explore AI Assurance Services</button>
+                    <button class="btn-primary" onclick="showRecommendedServices()">Explore Recommended Service</button>
                 </div>
             </div>
         </div>
@@ -279,8 +280,8 @@
 <div id="assurance-modal" class="modal hidden">
     <div class="modal-content modal-large">
         <span class="close-btn" onclick="hideAssuranceTiers()">&times;</span>
-        <h2>AI Assurance Services</h2>
-        <p>Choose the service that best fits your organization's needs</p>
+        <h2 id="assurance-modal-title">AI Assurance Services</h2>
+        <p id="assurance-modal-subtitle">Choose the service that best fits your organization's needs</p>
         <div id="tiers-container" class="tiers-grid"></div>
     </div>
 </div>
